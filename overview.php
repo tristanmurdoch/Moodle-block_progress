@@ -26,6 +26,7 @@
 
 // Include required files.
 require_once(dirname(__FILE__) . '/../../config.php');
+require_once($CFG->dirroot.'/notes/lib.php');
 require_once($CFG->dirroot.'/blocks/progress/lib.php');
 require_once($CFG->libdir.'/tablelib.php');
 
@@ -303,6 +304,11 @@ if ($numberofusers > 0) {
             $row['progressbar'], $row['progress']));
     }
 }
+
+echo html_writer::tag('p', get_string('participantscount', 'moodle', $numberofusers));
+$PAGE->requires->js_call_amd('core_user/name_page_filter', 'init');
+
+
 $table->print_html();
 
 $perpageurl = clone($PAGE->url);
@@ -316,16 +322,17 @@ if ($paged) {
 
 // Output messaging controls.
 if ($CFG->enablenotes || $CFG->messaging) {
-    echo html_writer::start_tag('div', array('class' => 'buttons'));
-    echo html_writer::empty_tag('input', array('type' => 'button', 'id' => 'checkall', 'value' => get_string('selectall')));
-    echo html_writer::empty_tag('input', array('type' => 'button', 'id' => 'checknone', 'value' => get_string('deselectall')));
+    echo html_writer::start_tag('div', array('class' => 'btn-group'));
+    echo html_writer::tag('input', "", array('type' => 'button', 'id' => 'checkallonpage', 'class' => 'btn btn-secondary',
+        'value' => get_string('selectall')));
+    echo html_writer::tag('input', "", array('type' => 'button', 'id' => 'checknone', 'class' => 'btn btn-secondary',
+        'value' => get_string('deselectall')));
     $displaylist = array();
     if (!empty($CFG->messaging) && has_capability('moodle/course:bulkmessaging', $context)) {
-        $displaylist['messageselect.php'] = get_string('messageselectadd');
+        $displaylist['#messageselect'] = get_string('messageselectadd');
     }
     if (!empty($CFG->enablenotes) && has_capability('moodle/notes:manage', $context)) {
-        $displaylist['addnote.php'] = get_string('addnewnote', 'notes');
-        $displaylist['groupaddnote.php'] = get_string('groupaddnewnote', 'notes');
+        $displaylist['#addgroupnote'] = get_string('addnewnote', 'notes');
     }
     echo html_writer::tag('label', get_string("withselectedusers"), array('for' => 'formactionid'));
     echo html_writer::select($displaylist, 'formaction', '', array('' => 'choosedots'), array('id' => 'formactionid'));
@@ -338,9 +345,13 @@ if ($CFG->enablenotes || $CFG->messaging) {
     echo html_writer::end_tag('form');
 }
 
-// Organise access to JS for messaging.
-$module = array('name' => 'core_user', 'fullpath' => '/user/module.js');
-$PAGE->requires->js_init_call('M.core_user.init_participation', null, false, $module);
+// Organise access to JS for messaging and notes.
+
+$options = new stdClass();
+$options->courseid = $course->id;
+$options->noteStateNames = note_get_state_names();
+$options->stateHelpIcon = $OUTPUT->help_icon('publishstate', 'notes');
+$PAGE->requires->js_call_amd('core_user/participants', 'init', [$options]);
 
 // Organise access to JS for progress bars.
 $jsmodule = array('name' => 'block_progress', 'fullpath' => '/blocks/progress/module.js');
